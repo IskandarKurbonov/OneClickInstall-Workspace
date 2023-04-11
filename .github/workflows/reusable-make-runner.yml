@@ -26,6 +26,11 @@ on:
         default: gd-4vcpu-16gb
         type: string
 
+      label:
+        description: "Droplet labels"
+        required: true
+        type: string
+
     secrets:
       access-token: 
         description: 'A token passed from the caller workflow'
@@ -72,7 +77,7 @@ jobs:
         echo "gha-runner ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/gha-runner
         export RUNNER_CFG_PAT="${{ secrets.access-token }}"
         cd /home/gha-runner
-        curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | sudo -E -s -u gha-runner bash -s ${{ github.repository }}
+        curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s -- -s ${{ github.repository }} -u gha-runner -l ${{ inputs.label }}
         EOF
 
     # Create the VM
