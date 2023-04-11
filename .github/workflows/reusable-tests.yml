@@ -16,7 +16,7 @@ on:
         description: 'RAM memory thats will be set for vagrant box'
         required: false
         type: string
-        default: '9500'
+        default: '10000'
       cpu:
         description: 'CPU count thats will be set for vagrant box'
         required: false
@@ -26,7 +26,7 @@ on:
 jobs:
   vagrant-up:
     name: "Run tests on ${{ inputs.distr }}"
-    runs-on: self-hosted
+    runs-on: "[self-hosted, ${{ inputs.distr }}]"
     steps:
     - name: Checkout code      
       uses: actions/checkout@v3
