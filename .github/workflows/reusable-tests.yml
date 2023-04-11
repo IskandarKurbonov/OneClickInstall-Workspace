@@ -16,12 +16,12 @@ on:
         description: 'RAM memory thats will be set for vagrant box'
         required: false
         type: string
-        default: '6450'
+        default: '9500'
       cpu:
         description: 'CPU count thats will be set for vagrant box'
         required: false
         type: string
-        default: '4'
+        default: '3'
       
 jobs:
   vagrant-up:
