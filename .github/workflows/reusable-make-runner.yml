@@ -23,7 +23,7 @@ on:
       size: 
         description: "Droplet size cpu/ram"
         required: false
-        default: s-4vcpu-8gb-intel
+        default: gd-4vcpu-16gb
         type: string
      
     secrets:
