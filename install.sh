@@ -40,7 +40,7 @@ DOCUMENT_VERSION="";
 MAIL_VERSION="";
 CONTROLPANEL_VERSION="";
 ELASTICSEARCH_VERSION="7.16.3";
-MYSQL_VERSION="5.5";
+MYSQL_VERSION="8.0.29";
 
 DOCUMENT_SERVER_HOST="";
 
@@ -288,6 +288,13 @@ while [ "$1" != "" ]; do
 			fi
 		;;
 
+		-mysqlup | --mysqlupdate )
+			if [ "$2" != "" ]; then
+				MYSQL_UPDATE=$2
+				shift
+			fi
+		;;
+
 		-mysqlprt | --mysqlport )
 			if [ "$2" != "" ]; then
 				MYSQL_PORT=$2
@@ -483,6 +490,7 @@ while [ "$1" != "" ]; do
 			echo "      -pdf, --partnerdatafile           partner data file"
 			echo "      -it, --installation_type          installation type (GROUPS|WORKSPACE|WORKSPACE_ENTERPRISE)"
 			echo "      -ms, --makeswap                   make swap file (true|false)"
+			echo "      -mysqlup, --mysqlupdate           mysql server version update (true|false)"
 			echo "      -mysqlh, --mysqlhost              mysql server host"
 			echo "      -mysqlprt, --mysqlport            mysql server port"
 			echo "      -mysqlru, --mysqlrootuser         mysql server root user"
@@ -1102,7 +1110,7 @@ install_mysql_server () {
 
 	RUN_MYSQL_SERVER="true";
 
-	if [[ -n ${MYSQL_SERVER_ID} ]]; then
+	if [[ -n "${MYSQL_SERVER_ID}" ]] && [[ "$MYSQL_UPDATE" != "true" ]]; then
 		RUN_MYSQL_SERVER="false";
 		echo "ONLYOFFICE MYSQL SERVER is already installed."
 		if [[ "$(awk -F. '{ printf("%d%03d%03d%03d", $1,$2,$3,$4); }' <<< $MYSQL_VERSION)" -lt "8000000000" ]]; then
@@ -1113,6 +1121,13 @@ install_mysql_server () {
 			fi
 		fi
 		docker restart ${MYSQL_SERVER_ID};
+	elif [[ -n "${MYSQL_SERVER_ID}" ]] && [[ "$MYSQL_UPDATE" = "true" ]]; then
+		echo "${MYSQL_VERSION}" > $BASE_DIR/mysql/.private/$MYSQL_DATABASE.version
+		docker exec ${MYSQL_SERVER_ID} sh -c "exec mysqldump -u ${MYSQL_USER} -p\"${MYSQL_PASSWORD}\" --routines ${MYSQL_DATABASE}" > ${BASE_DIR}/mysql/backup.sql
+		remove_container ${MYSQL_SERVER_ID}
+		RESTART_COMMUNITY_SERVER="true"
+		echo "" > $BASE_DIR/CommunityServer/data/.private/release_date 
+		RESTART_MAIL_SERVER="true"
 	fi
 
 	if [ "$RUN_MYSQL_SERVER" == "true" ]; then
@@ -1146,7 +1161,7 @@ FLUSH PRIVILEGES;" > ${BASE_DIR}/mysql/initdb/setup.sql
 		fi
 
 
-		if [ "$UPDATE" == "true" ]; then
+		if [ "$UPDATE" == "true" ] && [[ $MYSQL_UPDATE != "true" ]]; then
 			echo "copying $MYSQL_DATABASE database mysql files"
 			cp -rf ${BASE_DIR}/CommunityServer/mysql/. ${BASE_DIR}/mysql/data
 			MOVE_COMMUNITY_SERVER_DATABASE="true";
@@ -1178,6 +1193,10 @@ FLUSH PRIVILEGES;" > ${BASE_DIR}/mysql/initdb/setup.sql
 
 		if [ "$UPDATE" == "true" ]; then
 			change_mysql_credentials
+		fi
+
+		if [[ "$MYSQL_UPDATE" = "true" ]]; then
+			cat ${BASE_DIR}/mysql/backup.sql | docker exec -i ${MYSQL_SERVER_ID} sh -c "exec mysql -u${MYSQL_USER} -p\"${MYSQL_PASSWORD}\" ${MYSQL_DATABASE}"
 		fi
 	fi
 }
@@ -1274,7 +1293,7 @@ install_mail_server () {
 				fi
 			fi
 
-			if [ "$CURRENT_IMAGE_NAME" != "$MAIL_IMAGE_NAME" ] || ([ "$CURRENT_IMAGE_VERSION" != "$MAIL_VERSION" ] || [ "$SKIP_VERSION_CHECK" == "true" ]) || [ "$MOVE_DATABASE" == "true" ]; then
+			if [ "$CURRENT_IMAGE_NAME" != "$MAIL_IMAGE_NAME" ] || ([ "$CURRENT_IMAGE_VERSION" != "$MAIL_VERSION" ] || [ "$SKIP_VERSION_CHECK" == "true" ]) || [ "$MOVE_DATABASE" == "true" ] || [ "$MYSQL_UPDATE" == "true" ]; then
 				check_bindings $MAIL_SERVER_ID "/var/lib/mysql";
 				MAIL_DOMAIN_NAME=$(docker exec $MAIL_SERVER_ID hostname -f);
 
@@ -1290,9 +1309,16 @@ install_mail_server () {
 				docker start ${MAIL_SERVER_ID};
 			fi
 		else
-			RUN_MAIL_SERVER="false";
-			echo "ONLYOFFICE MAIL SERVER is already installed."
-			docker start ${MAIL_SERVER_ID};
+			if [ "$RESTART_MAIL_SERVER" == "true" ]; then
+				check_bindings $MAIL_SERVER_ID "/var/lib/mysql";
+				MAIL_DOMAIN_NAME=$(docker exec $MAIL_SERVER_ID hostname -f);
+				stop_mail_server_mysql
+				remove_container ${MAIL_CONTAINER_NAME}
+			else
+				RUN_MAIL_SERVER="false";
+				echo "ONLYOFFICE MAIL SERVER is already installed."
+				docker start ${MAIL_SERVER_ID};
+			fi
 		fi
 	else
 		RESTART_COMMUNITY_SERVER="true";
@@ -1519,7 +1545,7 @@ install_community_server () {
 			CURRENT_IMAGE_NAME=$(get_current_image_name "$COMMUNITY_CONTAINER_NAME");
 			CURRENT_IMAGE_VERSION=$(get_current_image_version "$COMMUNITY_CONTAINER_NAME");
 
-			if [ "$CURRENT_IMAGE_NAME" != "$COMMUNITY_IMAGE_NAME" ] || ([ "$CURRENT_IMAGE_VERSION" != "$COMMUNITY_VERSION" ] || [ "$SKIP_VERSION_CHECK" == "true" ]) || [ "$MOVE_COMMUNITY_SERVER_DATABASE" == "true" ]; then
+			if [ "$CURRENT_IMAGE_NAME" != "$COMMUNITY_IMAGE_NAME" ] || ([ "$CURRENT_IMAGE_VERSION" != "$COMMUNITY_VERSION" ] || [ "$SKIP_VERSION_CHECK" == "true" ]) || [ "$MOVE_COMMUNITY_SERVER_DATABASE" == "true" ] || [ "$MYSQL_UPDATE" == "true" ]; then
 				check_bindings $COMMUNITY_SERVER_ID "/var/lib/mysql";
 				COMMUNITY_PORT=$(docker port $COMMUNITY_SERVER_ID 80 | sed 's/.*://' | head -n1)
 				stop_community_server_mysql
@@ -1989,10 +2015,12 @@ remove_container () {
 }
 
 pull_mysql_server () {
-	if file_exists ${BASE_DIR}/mysql/.private/$MYSQL_DATABASE.version; then
-		MYSQL_VERSION=$(cat ${BASE_DIR}/mysql/.private/$MYSQL_DATABASE.version)	
-	elif grep "Version:" ${BASE_DIR}/mysql/logs/error.log > /dev/null 2>&1 ; then
-		MYSQL_VERSION=$(grep "Version:" ${BASE_DIR}/mysql/logs/error.log | grep -Po "'[0-99].[0-99]..*?'" | head -1 | tr -d \')
+	if [ "$MYSQL_UPDATE" != "true" ]; then
+		if file_exists ${BASE_DIR}/mysql/.private/$MYSQL_DATABASE.version; then
+			MYSQL_VERSION=$(cat ${BASE_DIR}/mysql/.private/$MYSQL_DATABASE.version)	
+		elif grep "Version:" ${BASE_DIR}/mysql/logs/error.log > /dev/null 2>&1 ; then
+			MYSQL_VERSION=$(grep "Version:" ${BASE_DIR}/mysql/logs/error.log | grep -Po "'[0-99].[0-99]..*?'" | head -1 | tr -d \')
+		fi
 	fi
 
 	echo $MYSQL_VERSION > ${BASE_DIR}/mysql/.private/$MYSQL_DATABASE.version
@@ -2273,7 +2301,6 @@ start_installation () {
 
 	if [ "$UPDATE" != "true" ]; then
 		check_ports
-		MYSQL_VERSION="8.0.29";
 
 		if [ "$INSTALL_MAIL_SERVER" == "true" ]; then
 			if [[ -z ${MAIL_DOMAIN_NAME} ]]; then
