@@ -63,16 +63,14 @@ jobs:
       run: |
         cat << EOF > ./user-data
         #!/bin/bash
-        sleep 30
-        curl https://www.virtualbox.org/download/oracle_vbox_2016.asc | gpg --dearmor > oracle_vbox_2016.gpg
-        curl https://www.virtualbox.org/download/oracle_vbox.asc | gpg --dearmor > oracle_vbox.gpg
-        install -o root -g root -m 644 oracle_vbox_2016.gpg /etc/apt/trusted.gpg.d/
-        install -o root -g root -m 644 oracle_vbox.gpg /etc/apt/trusted.gpg.d/
+        
+        apt -y update
+        apt -y install jq curl virtualbox
+        
         wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-        echo "deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian $(lsb_release -sc) contrib" | sudo tee /etc/apt/sources.list.d/virtualbox.list
         apt update -y
-        apt install virtualbox-7.0 vagrant -y
+        apt install vagrant -y
 
         useradd -m gha-runner
         echo "gha-runner ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/gha-runner
@@ -88,7 +86,7 @@ jobs:
     - name: Wait for VM to come online
       run: |
         sleep 30
-        for ATTEMPT in {1..20};
+        for ATTEMPT in {1..10};
         do
           echo "#### Attempt $ATTEMPT ####"
           if curl -s -X GET https://api.github.com/repos/${{ github.repository }}/actions/runners -H "accept: application/json" -H "authorization: token ${{ secrets.access-token }}" | jq -er '.runners[] | select(.name == "${{ inputs.name }}") | has("status")';
