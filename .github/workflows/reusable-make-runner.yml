@@ -63,7 +63,7 @@ jobs:
       run: |
         cat << EOF > ./user-data
         #!/bin/bash
-        export DEBIAN_FRONTEND=noninteractive
+
         apt -y update
         apt -y install curl linux-headers-$(uname -r) dkms
         
