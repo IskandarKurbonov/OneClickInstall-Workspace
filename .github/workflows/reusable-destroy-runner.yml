@@ -31,7 +31,7 @@ jobs:
 
     # Create the VM
     - name: Delete vm ${{ inputs.name }}
-      run: doctl compute droplet delete ${{ inputs.name }} -f
+      run: doctl compute droplet delete ${{ inputs.name }} -f || true
 
     - name: Delete the runner
       run: |
