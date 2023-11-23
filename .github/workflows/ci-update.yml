@@ -62,7 +62,7 @@ jobs:
 
               TEST_CASE='--local-install' \
               DISTR='onlyoffice' \
-              RAM='9100' \
+              RAM='7000' \
               CPU='3' \
               OS='${{ matrix.boxes }}' \
               DOWNLOAD_SCRIPT='-ds false' \
