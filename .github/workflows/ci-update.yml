@@ -46,6 +46,7 @@ jobs:
 
     - name: Set up Vagrant+Virtualbox
       run: |
+         sudo apt update -y
          sudo apt install vagrant virtualbox -y
       shell: bash
 
