@@ -20,7 +20,7 @@ concurrency:
 jobs:
   update-test:
     name: "Update test on ${{ matrix.boxes }}"
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
@@ -43,6 +43,11 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
+
+    - name: Set up Vagrant+Virtualbox
+      run: |
+         sudo apt install vagrant virtualbox -y
+      shell: bash
 
     - name: Testing with update
       uses: nick-fields/retry@v2
