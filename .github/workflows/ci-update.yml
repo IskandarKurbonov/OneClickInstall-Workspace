@@ -20,7 +20,7 @@ concurrency:
 jobs:
   update-test:
     name: "Update test on ${{ matrix.boxes }}"
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
@@ -44,6 +44,11 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: install vb+vagrant
+      run: | 
+           sudo apt-get update -y 
+           sudo apt-get install -y virtualbox vagrant
+
     - name: Testing with update
       uses: nick-fields/retry@v2
       with:
@@ -56,8 +61,8 @@ jobs:
 
               TEST_CASE='--local-install' \
               DISTR='onlyoffice' \
-              RAM='9000' \
-              CPU='3' \
+              RAM='5000' \
+              CPU='2' \
               OS='${{ matrix.boxes }}' \
               DOWNLOAD_SCRIPT='-ds false' \
               TEST_REPO='-tr true' \
