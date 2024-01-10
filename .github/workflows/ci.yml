@@ -1,5 +1,5 @@
 name: >
-  Installation test OneClickWorkspace
+  Installation test OneClickInstall-Workspace
 
 on:
   push:
@@ -100,49 +100,49 @@ jobs:
           sudo apt update -y
           sudo apt install vagrant virtualbox -y
 
-    - name: Install from production scripts
-      if: ${{ github.event_name == 'schedule' }}
-      uses: nick-fields/retry@v2
-      with:
-        max_attempts: 2
-        timeout_minutes: 180
-        retry_on: error
-        command: |
-              cd tests/vagrant
-              TEST_CASE='--production-install' \
-              DISTR='${{ matrix.distr }}' \
-              RAM='6100' \
-              CPU='2' \
-              OS='${{ matrix.os }}' \
-              DOWNLOAD_SCRIPT='-ds true' \
-              ARGUMENTS="-arg '--skiphardwarecheck true --makeswap false'" \
-              vagrant up
-        on_retry_command: |
-              echo "RUN CLEAN UP: Destroy vagrant and one more try"
-              cd tests/vagrant
-              sleep 10
-              vagrant destroy --force
+      - name: Install from production scripts
+        if: ${{ github.event_name == 'schedule' }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 2
+          timeout_minutes: 180
+          retry_on: error
+          command: |
+                cd tests/vagrant
+                TEST_CASE='--production-install' \
+                DISTR='${{ matrix.distr }}' \
+                RAM='6100' \
+                CPU='2' \
+                OS='${{ matrix.os }}' \
+                DOWNLOAD_SCRIPT='-ds true' \
+                ARGUMENTS="-arg '--skiphardwarecheck true --makeswap false'" \
+                vagrant up
+          on_retry_command: |
+                echo "RUN CLEAN UP: Destroy vagrant and one more try"
+                cd tests/vagrant
+                sleep 10
+                vagrant destroy --force
 
-    - name: Install from local scripts
-      #if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
-      uses: nick-fields/retry@v2
-      with:
-        max_attempts: 2
-        timeout_minutes: 180
-        retry_on: error
-        command: |
-              cd tests/vagrant
-              TEST_CASE='--local-install' \
-              DISTR='${{ matrix.distr }}' \
-              RAM='6100' \
-              CPU='2' \
-              OS='${{ matrix.os }}' \
-              DOWNLOAD_SCRIPT='-ds false' \
-              TEST_REPO='-tr true' \
-              ARGUMENTS="-arg '--skiphardwarecheck true --makeswap false --localscripts true'" \
-              vagrant up
-        on_retry_command: |
-              echo "RUN CLEAN UP: Destroy vagrant and one more try"
-              cd tests/vagrant
-              sleep 10
-              vagrant destroy --force
+      - name: Install from local scripts
+        #if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 2
+          timeout_minutes: 180
+          retry_on: error
+          command: |
+                cd tests/vagrant
+                TEST_CASE='--local-install' \
+                DISTR='${{ matrix.distr }}' \
+                RAM='6100' \
+                CPU='2' \
+                OS='${{ matrix.os }}' \
+                DOWNLOAD_SCRIPT='-ds false' \
+                TEST_REPO='-tr true' \
+                ARGUMENTS="-arg '--skiphardwarecheck true --makeswap false --localscripts true'" \
+                vagrant up
+          on_retry_command: |
+                echo "RUN CLEAN UP: Destroy vagrant and one more try"
+                cd tests/vagrant
+                sleep 10
+                vagrant destroy --force
