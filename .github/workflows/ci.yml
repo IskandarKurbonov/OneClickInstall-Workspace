@@ -1,16 +1,14 @@
-name: OneClickTests-Install
-
-run-name: >
+name: >
   Installation test OneClickWorkspace
 
 on:
   push:
-  pull_request:
-    types: [opened, reopened, synchronize]
-    paths-ignore:
-      - '.github/**'
-      - 'tests/**'
-      - '**/README.md'
+    pull_request:
+      types: [opened, reopened, synchronize]
+      paths-ignore:
+        - '.github/**'
+        - 'tests/**'
+        - '**/README.md'
 
   schedule:
     - cron: '00 21 * * 6'  # At 21:00 on Saturday.
@@ -18,41 +16,41 @@ on:
   workflow_dispatch:
     inputs:
       centos7:
-         type: boolean
-         description: 'CentOS 7'
-         default: true
+        type: boolean
+        description: 'CentOS 7'
+        default: true
       centos8s:
-         type: boolean
-         description: 'CentOS 8 Stream'
-         default: true
+        type: boolean
+        description: 'CentOS 8 Stream'
+        default: true
       centos9s:
-         type: boolean
-         description: 'CentOS 9 Stream'
-         default: true
+        type: boolean
+        description: 'CentOS 9 Stream'
+        default: true
       debian10:
-         type: boolean
-         description: 'Debian 10'
-         default: true
+        type: boolean
+        description: 'Debian 10'
+        default: true
       debian11:
-         type: boolean
-         description: 'Debian 11'
-         default: true
+        type: boolean
+        description: 'Debian 11'
+        default: true
       debian12:
-         type: boolean
-         description: 'Debian 12'
-         default: true
+        type: boolean
+        description: 'Debian 12'
+        default: true
       ubuntu1804:
-         type: boolean
-         description: 'Ubuntu 18.04'
-         default: true
+        type: boolean
+        description: 'Ubuntu 18.04'
+        default: true
       ubuntu2004:
-         type: boolean
-         description: 'Ubuntu 20.04'
-         default: true
+        type: boolean
+        description: 'Ubuntu 20.04'
+        default: true
       ubuntu2204:
-         type: boolean
-         description: 'Ubuntu 22.04'
-         default: true
+        type: boolean
+        description: 'Ubuntu 22.04'
+        default: true
 
 jobs:
   prepare:
@@ -80,7 +78,7 @@ jobs:
           echo "matrix=${matrix}" >> $GITHUB_OUTPUT
 
   vagrant-up:
-    name: "Test DocSpace with ${{ matrix.name}}"
+    name: "Test Workspace with ${{ matrix.name}}"
     runs-on: ubuntu-22.04
     needs: prepare
     strategy:
@@ -103,7 +101,7 @@ jobs:
           sudo apt install vagrant virtualbox -y
 
     - name: Install from production scripts
-      # if: ${{ github.event_name == 'schedule' }}
+      if: ${{ github.event_name == 'schedule' }}
       uses: nick-fields/retry@v2
       with:
         max_attempts: 2
@@ -126,7 +124,7 @@ jobs:
               vagrant destroy --force
 
     - name: Install from local scripts
-      if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+      #if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
       uses: nick-fields/retry@v2
       with:
         max_attempts: 2
@@ -135,10 +133,10 @@ jobs:
         command: |
               cd tests/vagrant
               TEST_CASE='--local-install' \
-              DISTR='${{ inputs.author }}' \
-              RAM='${{ inputs.ram }}' \
-              CPU='${{ inputs.cpu }}' \
-              OS='${{ inputs.distr }}' \
+              DISTR='${{ matrix.distr }}' \
+              RAM='6100' \
+              CPU='2' \
+              OS='${{ matrix.os }}' \
               DOWNLOAD_SCRIPT='-ds false' \
               TEST_REPO='-tr true' \
               ARGUMENTS="-arg '--skiphardwarecheck true --makeswap false --localscripts true'" \
