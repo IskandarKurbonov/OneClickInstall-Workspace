@@ -61,6 +61,12 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Get update and install vagrant
+      run: |
+        set -eux
+        sudo apt update -y
+        sudo apt install vagrant virtualbox -y
+
     - name: Testing with update
       uses: nick-fields/retry@v2
       with:
