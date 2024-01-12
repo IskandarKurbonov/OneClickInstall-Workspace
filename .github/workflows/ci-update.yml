@@ -4,7 +4,7 @@ run-name: >
   Update workspace from old version test.
 
 on:
-  push:
+  # push:
   pull_request:
     types: [opened, reopened, synchronize]
     paths-ignore:

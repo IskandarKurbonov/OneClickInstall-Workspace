@@ -1,6 +1,7 @@
 name: Rebuild Boxes
 
 on:
+  push:
   #Auto-rebuild trigger disabled now.
   #push:
     #branches:
@@ -24,21 +25,19 @@ defaults:
 jobs:
   vagrant-up:
     name: "Rebuild box with ${{ matrix.boxes }}"
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         distributor: ["generic"]
-        boxes: ["centos7", "centos8s", "centos9s", "debian10", "debian11", "ubuntu1804", "ubuntu2004", "ubuntu2204"]
-        unclude:
-          - distributor: "debian"
-            boxes: "bookworm64"
+        boxes: ["centos7", "centos8s", "centos9s", "debian10", "debian11", "debian12" "ubuntu1804", "ubuntu2004", "ubuntu2204"]
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Set up Python 3.
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.x'
     
@@ -68,7 +67,7 @@ jobs:
                 sleep 300
                 vagrant package --output repacked_${{ matrix.boxes }}.box
                 vagrant cloud publish \
-                   ${VAGRANT_ACCOUNT}/${{ matrix.boxes }} \
+                   ${VAGRANT_ACCOUNT}/workspace-${{ matrix.boxes }} \
                    $date virtualbox repacked_${{ matrix.boxes }}.box \
                    -d "Box with pre-installed workspace" \
                    --version-description "Workspace <version>" \
