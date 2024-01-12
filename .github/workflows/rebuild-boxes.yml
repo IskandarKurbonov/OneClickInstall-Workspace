@@ -1,7 +1,6 @@
 name: Rebuild Boxes
 
 on:
-  push:
   #Auto-rebuild trigger disabled now.
   #push:
     #branches:
