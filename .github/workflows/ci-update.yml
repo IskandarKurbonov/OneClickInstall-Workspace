@@ -61,6 +61,11 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Free Disk Space
+      run: |
+        sudo rm -rf /usr/local/lib/android /opt/ghc
+        sudo docker image prune --all --force       
+
     - name: Get update and install vagrant
       run: |
         set -eux
