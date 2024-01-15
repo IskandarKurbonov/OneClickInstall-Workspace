@@ -24,7 +24,7 @@ defaults:
 
 jobs:
   vagrant-up:
-    name: "Rebuild box with ${{ matrix.boxes }}"
+    name: "Rebuild box with ${{ matrix.name }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
