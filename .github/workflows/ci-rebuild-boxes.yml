@@ -1,0 +1,128 @@
+name: Rebuild Boxes
+
+on:
+  push:
+  #Auto-rebuild trigger disabled now.
+  #push:
+    #branches:
+      #- master
+    #paths-ignore:
+      #- '**/README.md'
+      #- '**/LICENSE'
+      #- '.github/**'
+      #- 'tests/**'
+  workflow_dispatch:
+
+env: 
+  BOX_DISTRIBUTION: generic
+  VAGRANT_TOKEN: ${{ secrets.VAGRANT_TOKEN }}
+  VAGRANT_ACCOUNT: ${{ secrets.VAGRANT_ACCOUNT }}
+
+defaults:
+  run:
+    working-directory: 'tests/vagrant'
+
+jobs:
+  vagrant-up:
+    name: "Rebuild box with ${{ matrix.boxes }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distr: "generic"
+            boxes: "centos7"
+            name: CentOS7
+
+          - distr: "generic"
+            boxes: "centos8s"
+            name: "CentOS8S"
+
+          - distr: "generic"
+            boxes: "centos9s"
+            name: "CentOS9S"
+            
+          - distr: "generic"
+            boxes: "debian10"
+            name: "Debian10"
+
+          - distr: "generic"
+            boxes: "debian11"
+            name: "Debian11"
+
+          - distr: "debian"
+            boxes: "bookworm64"
+            name: "Debian12"
+
+          - distr: "generic"
+            boxes: "ubuntu1804"
+            name: "Ubuntu1804"
+            
+          - distr: "generic"
+            boxes: "ubuntu2004"
+            name: "Ubuntu2004"
+
+          - distr: "generic"
+            boxes: "ubuntu2204"
+            name: "Ubuntu2204"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Free Disk Space
+      run: |
+        sudo rm -rf /usr/local/lib/android /opt/ghc
+        sudo docker image prune --all --force       
+
+    - name: Get update and install vagrant
+      run: |
+        set -eux
+        sudo apt update -y
+        sudo apt install vagrant virtualbox -y
+
+    - name: Login Vagrant cloud
+      run: vagrant cloud auth login --token ${VAGRANT_TOKEN}
+
+    - name: Rebuild all boxes
+      uses: nick-fields/retry@v2
+      with:
+        max_attempts: 3
+        timeout_minutes: 240
+        retry_on: error
+        command: |
+                set -eux
+                
+                cd tests/vagrant
+                export date=$(date +%F)
+                sleep 300
+                   TEST_CASE='--production-install' \
+                   DISTR='${{ matrix.distr }}' \
+                   OS='${{ matrix.boxes }}' \
+                   DOWNLOAD_SCRIPT='-ds true' \
+                   RAM='9100' \
+                   CPU='3' \
+                   ARGUMENTS="-arg '--skiphardwarecheck true --makeswap false'" \
+                   vagrant up
+                sleep 300
+                vagrant package --output repacked_${{ matrix.name }}.box
+                vagrant cloud publish \
+                   ${VAGRANT_ACCOUNT}/workspace-${{ matrix.name }} \
+                   $date virtualbox repacked_${{ matrix.name }}.box \
+                   -d "Box with pre-installed workspace" \
+                   --version-description "Workspace <version>" \
+                   --release --short-description "Boxes for update testing" \
+                   --force \
+                   --no-private
+        on_retry_command: |
+               set -eux
+
+               echo "RUN CLEAN UP: Remove repacked box and destroy"
+               cd tests/vagrant
+               rm -rf repacked_${{ matrix.name }}.box
+               vagrant destroy --force
